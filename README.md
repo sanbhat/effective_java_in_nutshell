@@ -235,41 +235,41 @@ Let's say, we want to check if a person is *Baby Boomer*, that is, whether the p
 
 Wrong example - 
 
-      class Person {
-            private Date birthDate;
-           
-            // DON'T DO THIS!
-            public boolean isBabyBoomer() {
-               // Unnecessary allocation of expensive object
-               Calendar gmtCal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-               gmtCal.set(1946, Calendar.JANUARY, 1, 0, 0, 0);
-               Date boomStart = gmtCal.getTime();
-               gmtCal.set(1965, Calendar.JANUARY, 1, 0, 0, 0);
-               Date boomEnd = gmtCal.getTime();
-               return birthDate.compareTo(boomStart) >= 0 && birthDate.compareTo(boomEnd) < 0;
-            }
-      }
+         class Person {
+               private Date birthDate;
+
+               // DON'T DO THIS!
+               public boolean isBabyBoomer() {
+                  // Unnecessary allocation of expensive object
+                  Calendar gmtCal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+                  gmtCal.set(1946, Calendar.JANUARY, 1, 0, 0, 0);
+                  Date boomStart = gmtCal.getTime();
+                  gmtCal.set(1965, Calendar.JANUARY, 1, 0, 0, 0);
+                  Date boomEnd = gmtCal.getTime();
+                  return birthDate.compareTo(boomStart) >= 0 && birthDate.compareTo(boomEnd) < 0;
+               }
+         }
 
 Right example - 
 
-      class Person {
-            private Date birthDate;
-            
-            private static final Date boomStart;
-            private static final Date boomEnd;
-            
-            static {
-                  Calendar gmtCal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-                  gmtCal.set(1946, Calendar.JANUARY, 1, 0, 0, 0);
-                  boomStart = gmtCal.getTime();
-                  gmtCal.set(1965, Calendar.JANUARY, 1, 0, 0, 0);
-                  boomEnd = gmtCal.getTime();
-            }
+         class Person {
+               private Date birthDate;
 
-            public boolean isBabyBoomer() {
-               return birthDate.compareTo(boomStart) >= 0 && birthDate.compareTo(boomEnd) < 0;
-            }
-      }
+               private static final Date boomStart;
+               private static final Date boomEnd;
+
+               static {
+                     Calendar gmtCal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+                     gmtCal.set(1946, Calendar.JANUARY, 1, 0, 0, 0);
+                     boomStart = gmtCal.getTime();
+                     gmtCal.set(1965, Calendar.JANUARY, 1, 0, 0, 0);
+                     boomEnd = gmtCal.getTime();
+               }
+
+               public boolean isBabyBoomer() {
+                  return birthDate.compareTo(boomStart) >= 0 && birthDate.compareTo(boomEnd) < 0;
+               }
+         }
 
 * **Be careful with AutoBoxing** - Since Java 1.5 and introduction of *auto boxing*, we can intermix the **primitive** type variables with their respective **wrapper** types. If we do that unintentionally, then we are in for some serious performance issues! For example - 
       
