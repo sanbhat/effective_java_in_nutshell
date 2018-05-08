@@ -11,7 +11,8 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
    5. [Avoid creating unnecessary objects](#create_destroy_avoid_unnecessary)
    6. [Eliminate obsolete references](#create_destroy_obsolete_ref)
    7. [Avoid finalizers](#create_destroy_finalizers)
-   
+2. [Methods common to All Objects](#common_methods)
+   1. [Overriding equals](#common_methods_equals)
 
 <a id='create_destroy' />
 
@@ -323,3 +324,172 @@ Correct implementation -
 #### The only advantage
  
 The only advantage of finalizers could be to use them as a *safety net*, incase owner of an object, forgets to call the clean up method, which will release the resources held by the object. In this case, the finalizer can *Log a warning* saying that the resources were left open! and also try to *close the resources* to avoid any resource leak (Its better late than never)
+
+
+<a id='common_methods'/>
+
+## Methods common to All Objects
+
+<a id='common_methods_equals' />
+
+### Overriding equals
+Overriding `equals()` in a wrong way is worse than leaving it as is. Sometimes, the default `equals()` implementation - which compares the instances / references, makes sense. Following are those scenarios, where overriding `equals()` doesn't make sense.
+
+* Each instance of the class is inherantly unique. Example - `Thread`
+* You don't care about a class's logical equality. Example - `Random`
+* A super class has already provided an implementation of  `equals()` whose behavior is appropriate for sub classes. Example -  `AbstractList` and `List`
+* The class is private or package-private (default), and you know that `equals()` method, will not be invoked.
+
+We overrode `equals()` method, when a class has notion of ***logical equality*** or when it is a *value* class (such as `Integer`, `Long` etc). We also implement `equals()` if the super class has not already implemented it. Following are the rules to take care of, while overriding `equals()`.
+
+1. **Reflexive** - for any non-null reference `x`, `x.equals(x)` must be `true`.
+2. **Symmetric** - for any non-null reference `x` and `y`, if `x.equals(y)` is `true` then `y.equals(x)` must also be `true`.
+3. **Transitive** - for any non-null reference `x`, `y` and `z`, if `x.equals(y)` is `true` and `y.equals(z)` is `true` then `x.equals(z)` must return `true`.
+4. **Consistent** - for any non-null reference `x` and `y`, multiple invocations of `x.equals(y)` must consistently return `true` (or `false`), unless their values (which are used to determine the equality) are changed
+5. **Null Equality** - For any non-null reference `x` , `x.equals(null)` must return `false`.
+
+**Reflexive** - property can be implementing by having a check in the `equals()` method to see if the parameter and `this` object are *equal by reference*
+
+**Symmetric** - Below code breaks symmetry!
+
+      public final class CaseInsensitiveString {
+         private final String s;
+         public CaseInsensitiveString(String s) {
+            if (s == null)
+               throw new NullPointerException();
+            this.s = s;
+         }
+         
+         // Broken - violates symmetry!
+         @Override public boolean equals(Object o) {
+            if (o instanceof CaseInsensitiveString)
+               return s.equalsIgnoreCase(((CaseInsensitiveString) o).s);
+            if (o instanceof String) // One-way interoperability!
+               return s.equalsIgnoreCase((String) o);
+            return false;
+         }
+         
+      }
+
+because, for 2 objects `CaseInsensitiveString s1 = new CaseInsensitiveString("abc");` and `String s2 = "abc;"`, while `s1.equals(s2)` is `true`,  `s2.equals(s1)` is `false`.
+
+**Transitive** - We need to be careful while adding *value* field to a subtype of a class (which itself represents a value). For example consider a value class called `Point`
+
+      class Point {
+            private final int x;
+            private final int y;
+            
+            public Point(int x, int y) {
+               this.x = x;
+               this.y = y;
+            }
+            
+            @Override
+            public boolean equals(Object o) {
+               if(!(o instanceof Point)) {
+                  return false;
+               }
+               
+               Point other = (Point) o;
+               return this.x == other.x && this.y == other.y;
+            }
+            
+      }
+
+Let's create a new class which has *logical equality*, by adding another  *value* field called `Color`.
+
+      class ColorPoint extends Point {
+            private final Color color;
+            
+            public ColorPoint(int x, int y, Color color) {
+               super(x, y);
+               this.color = color;
+            }
+      }
+      
+Now think, how the `equals()` method should be defined?
+
+* We cannot live with the super class implementation - this will do Color blind comparison!
+* Let's try a simple implementation
+
+         // Broken - violates symmetry!
+         @Override public boolean equals(Object o) {
+            if (!(o instanceof ColorPoint))
+               return false;
+            return super.equals(o) && ((ColorPoint) o).color == color;
+         }
+         
+This will break, Symmetry! - Let's say we have `ColorPoint c = new ColorPoint(1, 2, Color.RED)` and `Point p = new Point(1,2)`, `p.equals(c)` will be **true**, but `c.equals(p)` will be **false**.
+         
+* Let's try to fix above issue
+
+      @Override
+      public boolean equals(Object o) {
+            if(!(o instanceof Point)) return false;
+            
+            if(!(o instanceof ColorPoint)) {
+               return o.equals(this); // Color blind comparison!
+            }
+            
+            ColorPoint c = (ColorPoint) o;
+            return super.equals(c) && c.color == this.color;
+      }
+
+This will maintain the Symmetry but at the cost of Transitivity! - Let's say we have 
+
+         ColorPoint c1 = new ColorPoint(1, 2, Color.RED);
+         Point p = new Point(1,2);
+         ColorPoint c2 = new ColorPoint(1, 2, Color.BLUE);
+
+Here `c1.equals(p)` is **true**, `p.equals(c2)` is **true**, but `c1.equals(c2)` is **false**.
+
+* Forget `instaceof` , why not check class type?
+
+         @Override public boolean equals(Object o) {
+               if (o == null || o.getClass() != getClass())
+                  return false;
+               Point p = (Point) o;
+               return p.x == x && p.y == y;
+         }
+
+This will break ***Liskov Principle*** which says, any significant property of a supertype must hold good for subtype too. So if we subtype the class `Point` by adding some fields and NOT overriding `equals()` method, then the sub-type will not be *logically equal* with the super type instance, even if it has not added any *value* field.
+
+Hence, the best possible way of implementing `equals()` while adding *value* field in sub-type is to use **Composition**.
+
+      class ColorPoint {
+            
+            private final Point p;
+            private final Color c;
+            
+            public ColorPoint(int x, int y, Color c) {
+               this.p = new Point(x, y);
+               this.c = c;
+            }
+      
+            @Override
+            public boolean equals(Object o) {
+               if(!(o instanceof ColorPoint)) {
+                  return false;
+               }
+               
+               ColorPoint cp = (ColorPoint) o;
+               return this.p.equals(cp.p) && this.c == cp .c;
+            }
+      }
+
+
+**Consistency** - For `equals()` method of a class to be consistent, the class should be *Immutable* or the equals method should not depend on unreliable resources.
+
+**Null Equality** - It is not required to check if the parameter of `equals` method `== null` to return `false`. The `instanceof` check servers both the purpose (checking null and type compatibility).
+
+#### The General rule
+
+1. Start comparing other object with this, using reference comparison `==`.
+2. Check for type compatibility (and null check) using `instanceof`.
+3. Cast the argument to correct type.
+4. For significant fields of other object, check the corresponding fields of this object.
+5. Compare primitive types using `==` except `float`, `double`. For those, use `Float.compare(..)` and `Double.compare(..)` respectively.
+6. For fields which are of type objects, invoke equals recursively.
+7. Do a null check on the object fields, `(field == this.field) || (field != null && field.equals(this.field)`.
+8. After the implementation, use *Test cases* to assert if the equals implementation is *Reflexive*, *Symmetric* and *Transitive*.
+9. Do not overload equals with strong types - `public boolean equals(Myclass o)` - use `@Override` to detect such error.
