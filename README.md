@@ -533,7 +533,7 @@ Now, lets use the object as a key in `HashMap` -
       HashMap<Account, String> map = new HashMap<>();
       map.put(new Account(1), "Test Account");
       
-When you invoke `map.get(new Account(1));`, the result will be `null` because, even though the 2 objects used (in `put` and `get`) are logically equal, they have different hashCode values. Within the `HashMap`, either the new object will lookup a different hash bucket, than what it used to store the first object. ***Even if the second object hashes to same bucket, still the result will be `null` because, `HashMap` has an optimization, which will not proceed further, if the `hashCode` value is different!***.
+When you invoke `map.get(new Account(1));`, the result will be `null` because, even though the 2 objects used (in `put` and `get`) are logically equal, they have different hashCode values. Within the `HashMap`, either the new object will lookup a different hash bucket, than what it used to store the first object.  **Even if the second object hashes to same bucket, still the result will be `null` because, `HashMap` has an optimization, which will not proceed further, if the `hashCode` value is different!**.
 
 #### The General rule
 
