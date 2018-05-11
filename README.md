@@ -13,6 +13,7 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
    7. [Avoid finalizers](#create_destroy_finalizers)
 2. [Methods common to All Objects](#common_methods)
    1. [Overriding equals](#common_methods_equals)
+   2. [Override hashCode inline with equals](#common_methods_hashcode)
 
 <a id='create_destroy' />
 
@@ -493,3 +494,66 @@ Hence, the best possible way of implementing `equals()` while adding *value* fie
 7. Do a null check on the object fields, `(field == this.field) || (field != null && field.equals(this.field)`.
 8. After the implementation, use *Test cases* to assert if the equals implementation is *Reflexive*, *Symmetric* and *Transitive*.
 9. Do not overload equals with strong types - `public boolean equals(Myclass o)` - use `@Override` to detect such error.
+
+
+<a id='common_methods_hashcode' />
+
+### Always override hashCode() if you override equals()
+
+**You must override hashCode() inline with with equals(), if you have already overriden equals() method**. Following is the contract between the 2 methods as per the Java specifications
+
+1. The value returned by the `hashCode()` method should remainin consistent throughout the exeucution of an application, provided the field used within the equals / hashCode, have not changed. However, the value can change, when the method is invoked within another execution of the application.
+2. If two objects are equal (as per the `equals()` method), then the value returned by the `hashCode()` method of those two objects must be same
+3. If two objects are not equal, then it is not mandatory for the hashCode method on those two objects to produce different results. In other words, objects having same hashCode value, can be unequal.
+
+Not obeying above rules will lead to **inconsistent and unpredictable behavior**, when the object is used in hashing based datastructures such as `HashMap`, `HashSet` or `Hashtable`. 
+
+Consider a simple class, overriding `equals()` method and not overriding `hashCode()`
+
+      class Account {
+            
+            private final Integer id;
+         
+            public Account(Integer id) {
+               this.id = id;
+            }
+            
+            public boolean equals(Object o) {
+               if(this == o) return true;
+               if(!(o instanceof Account)) return false;
+               Account a = (Account)o;
+               return a.id != null ? a.id.equals(id) : false;               
+            }
+            
+            //No hashCode() - BROKEN!
+      }
+      
+Now, lets use the object as a key in `HashMap` - 
+
+      HashMap<Account, String> map = new HashMap<>();
+      map.put(new Account(1), "Test Account");
+      
+When you invoke `map.get(new Account(1));`, the result will be `null` because, even though the 2 objects used (in `put` and `get`) are logically equal, they have different hashCode values. Within the `HashMap`, either the new object will lookup a different hash bucket, than what it used to store the first object. ***Even if the second object hashes to same bucket, still the result will be `null` because, `HashMap` has an optimization, which will not proceed further, if the `hashCode` value is different!***.
+
+#### The General rule
+
+1. Start with an integer `result`, with a value `17` (randomly selected)
+2. Do the following for all the significant fields `f` , which are used in the `equals` method
+   1. Compute the hash of the field - `c` - using following methods
+      1. if `f` is `boolean`, then `c = f ? 1 : 0`
+      2. if `f` is `char`, `byte`, `short` or `int`, then `c = (int) f`
+      3. if `f` is `long`, then `c = (int) (f ^ (f >>> 32))` OR, since Java8 use `Long.hashCode(f)`
+      4. if `f` is `float`, then `c = Float.floatToIntBits(f)` OR, since Java8 use `Float.hashCode(f)`
+      5. if `f` is `double`, then `c = Double.doubleToLongBits(f)); c = (int)(c ^ (c >>> 32));` OR, since Java8 use `Double.hashCode(f)`
+      6. if `f` is an object, then similar to how you check the equality, compute the hashCode value recursively and combine it to the overall result.
+      7. if `if` is an array, then use variants of `Arrays.hashCode(f)` method and again combine the result with the overall result;
+    2. Once the hash value is calculated, then combine the computed value with overall `result`
+         
+            result = 31 * result + c;
+3. return `result`
+4. Check carefully, by means of unit testing to see if `hashCode()` and `equals()` behave consistently
+    
+    
+* Also, its good to *cache* the hash value for **immutable** objects, if computing it is costly.
+* We should not exclude significant objects from the computation of hashcode value, just in the name of performance! This might cause significant performance later, when we use the objects in Hash based data structures.
+* Avoid documenting the *expected value* from the `hashCode()` method, which might lead clients, to write specific logic depending on the *expected* result of the `hashCode` method. This might prevent further improvements to the hashing methodology later.
