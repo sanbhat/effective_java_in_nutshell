@@ -14,6 +14,7 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
 2. [Methods common to All Objects](#common_methods)
    1. [Overriding equals](#common_methods_equals)
    2. [Override hashCode inline with equals](#common_methods_hashcode)
+   3. [Overriding toString](#common_methods_tostring)
 
 <a id='create_destroy' />
 
@@ -500,6 +501,8 @@ Hence, the best possible way of implementing `equals()` while adding *value* fie
 
 ### Always override hashCode() if you override equals()
 
+The default implementation of `hashCode()` returns the memory address of the object converted to integer.
+
 **You must override hashCode() inline with with equals(), if you have already overriden equals() method**. Following is the contract between the 2 methods as per the Java specifications
 
 1. The value returned by the `hashCode()` method should remainin consistent throughout the exeucution of an application, provided the field used within the equals / hashCode, have not changed. However, the value can change, when the method is invoked within another execution of the application.
@@ -557,3 +560,12 @@ When you invoke `map.get(new Account(1));`, the result will be `null` because, e
 * Also, its good to *cache* the hash value for **immutable** objects, if computing it is costly.
 * We should not exclude significant objects from the computation of hashcode value, just in the name of performance! This might cause significant performance later, when we use the objects in Hash based data structures.
 * Avoid documenting the *expected value* from the `hashCode()` method, which might lead clients, to write specific logic depending on the *expected* result of the `hashCode` method. This might prevent further improvements to the hashing methodology later.
+
+### Override toString()
+
+The default implementation of `toString()` in `Object` class gives a value with the format `<class-name>@<hexadecimal-representation-of-hashcode>`
+
+* Providing a good `toString()` implementation makes our class pleasent to use
+* `toString()` method if practical, should return all the interesting information contained in the object
+* The documentation of `toString()` method should clearly specify, if the method returns the values in a particular **format** or not. If the method maintains a format, then changing it later might be difficult as many clients may already been consuming the values in that format.
+* One should always provide programmatic access to all the information contained in the value returned by `toString()` method of the object - This will make the code robust, as client will not try to get those information by parsing `toString()` value which can have unreliable format.
