@@ -15,6 +15,7 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
    1. [Overriding equals](#common_methods_equals)
    2. [Override hashCode inline with equals](#common_methods_hashcode)
    3. [Overriding toString](#common_methods_tostring)
+   4. [Overriding clone judiciously](#common_methods_clone)
 
 <a id='create_destroy' />
 
@@ -561,6 +562,8 @@ When you invoke `map.get(new Account(1));`, the result will be `null` because, e
 * We should not exclude significant objects from the computation of hashcode value, just in the name of performance! This might cause significant performance later, when we use the objects in Hash based data structures.
 * Avoid documenting the *expected value* from the `hashCode()` method, which might lead clients, to write specific logic depending on the *expected* result of the `hashCode` method. This might prevent further improvements to the hashing methodology later.
 
+<a id='common_methods_tostring' />
+
 ### Override toString()
 
 The default implementation of `toString()` in `Object` class gives a value with the format `<class-name>@<hexadecimal-representation-of-hashcode>`
@@ -569,3 +572,30 @@ The default implementation of `toString()` in `Object` class gives a value with 
 * `toString()` method if practical, should return all the interesting information contained in the object
 * The documentation of `toString()` method should clearly specify, if the method returns the values in a particular **format** or not. If the method maintains a format, then changing it later might be difficult as many clients may already been consuming the values in that format.
 * One should always provide programmatic access to all the information contained in the value returned by `toString()` method of the object - This will make the code robust, as client will not try to get those information by parsing `toString()` value which can have unreliable format.
+
+
+<a id='common_methods_clone' />
+
+### Overriding clone judiciously
+
+* `Cloneable` interface was designed to be a **mixin interface**, to advertise that the object which implements it will support cloning, but ended up with a flaw by not having the `clone()` method.
+* The job of `Cloneable` interface is to allow classes implementing them, to get *field-by-field* copy when invoking Object's `clone()` method, and to throw `CloneNotSupportedException` if someone tries to invoke the `clone()` method without implementing the interface. This contract looks **extra-linguistic** and **flawed**.
+
+#### If you anyway would like to override clone()?
+
+* If you override the `clone` method in a non-final class, then you should return an object obtained by invoking `super.clone`. If all the super classes obey this rule, then eventually `Object`'s `clone()` method will be called, which results in creating the right object. This mechanism is isn't properly enforced via the contract!
+* A class implementing `Cloneable` interface, is expected to provide a fully functional `public clone` method.
+* While implementing `clone`, change the return type of the method to the concrete class type of the enclosing class. This is possible since Java 1.5's *covariant return types* and this mechanism will also uphold a general principal - **never make the client do anything that the library can do for the clients**. Also omit throwing `CloneNotSupportedException` - checked exception!
+* Handle the cloning of mutable objects within the enclosing class. Provide **deep-cloning** mechanism, as per the necessity. Do not deep-clone in a recursive way. Take the help of constructors to create mutable fields of cloned object in a virgin state and then use internal helper methods to fill the same data as original object. - Example - `HashMap.clone()`
+* clone architecture is incompatible with the nornal use of `final` fields referring to mutable objects. Remove `final` keywords as necessary. 
+
+#### Better off avoiding clone() ? 
+
+* Its better to simply avoid providing the clone capability or providing an alternative means of object copying.
+* A fine approach is to provide *copy constructors* or *copy factory* - which solves many shortcomings of clone method discussed above.
+* The *copy* constructors or factory methods can accept the general interfaces, which can allow copying of objects of one type to another. They are called *conversion constructors* or *conversion factories*. - Example - converting `ArrayList` to `LinkedList`, using former's constructor - `ArrayList(Collection c)`.
+
+
+#### Advantage
+
+`clone()` seems to give the best performance while copying arrays.
