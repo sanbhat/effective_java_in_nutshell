@@ -16,6 +16,7 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
    2. [Override hashCode inline with equals](#common_methods_hashcode)
    3. [Overriding toString](#common_methods_tostring)
    4. [Overriding clone judiciously](#common_methods_clone)
+   5. [Consider implementing Comparable](#common_methods_compareTo)
 
 <a id='create_destroy' />
 
@@ -599,3 +600,52 @@ The default implementation of `toString()` in `Object` class gives a value with 
 #### Advantage
 
 `clone()` seems to give the best performance while copying arrays.
+
+<a id='common_methods_compareTo' />
+
+### Consider implementing Comparable
+
+* The `compareTo` method is not present in `Object`class, rather it is part of `Comparable` **functional interface**.
+* The method is similar to `equals` except, it provides "order comparison" in addition, and it is *generic*. By implementing `Comparable`, a class can define its *natural ordering*.
+* Multiple utility methods in `Collections` and `Arrays` use the `Comparable` contract to sort and search the array of objects.
+
+#### The general contract
+
+The `compareTo` method takes `(T o)` - where `T` is type of class and `o` - is other object, with which `this` object is being compared. The method will return negative, zero or positive integer as this object is less than, equal to or greater than the other object. This method will throw `ClassCastException` if the other object's type, prevents it from being compared to this object.
+
+if we consider `sign(expression)` function to return -1, 0 or 1, if the `expression` evaluates to a negative, zero or positive value respectively, then following rules needs to be kept in mind while implementing the `compareTo` method.
+
+1. Ensure `sign(x.compareTo(y)) == -sign(y.compareTo(x))` for all `x` and `y`. Meaning, if `x` is greater than `y` then `y` should be less than `x`; if `x` is equal to `y` then `y` should be equal to `x`; if `x` is less than `y` then `y` must be greater than `x`.
+
+2. If `x.compareTo(y)` throws `ClassCastException`, then `y.compareTo(x)` must throw the same exception.
+
+3. Transivite relation should be maintained. If `x.compareTo(y) > 0` and `y.compareTo(z) > 0` then `x.compareTo(z)` must be `> 0` for all `x`, `y` and `z`. Meaning, if `x` is greater than `y` and `y` is greater than `z`, then it should imply that `x` must be greater than `z`.
+
+4. It is **stongly recommended, but not strictly required** that if `x.compareTo(y) == 0` then `x.equals(y)` should be `true`.
+If the equality test result of `compareTo` matches that of `equals` method, then `compareTo` method is said to be *consistent with equals* otherwise, it is said to be *incosistent with equals*.  In case of *inconsistency* a Note should be provided in the documentation stating the same.
+
+* Since the `compareTo` contract resembles the `equals` contract discussed in the previous section, the same caveats and work-arounds apply here too.
+* The difference between writing `compareTo` and `equals` is that, `compareTo` is parameterized, hence there is no need to cast the other object. We cannot compare objects of two different types. If we compare an object with null, the method is expected to throw `NullPointerException`.
+* **NOTE** The general contracts defined for collection interfaces (`Collection`, `Map`, `Set`) are based on `equals` method. But the *sorted collections* use `compareTo` method to check the equality, and inconsistency between the implementations might lead to unexpected behavior. Example - Let's say, we have a class which implements `equals` and `compareTo` in different ways, and there are 2 instances of that class which are **equal** as per `equals` and **not equal** as per `compareTo`. When we add these instances to `TreeSet`, the set will retain both the instances even if they are **equal** (as per `equals`) which is against the `Set` contract.
+* Compare primitive fields using `<` or `>` operator. For floating points use, `Float.compare` or `Double.compare`. For arrays, apply the guidelines for each of the elements.
+* If the class has multiple significant fields, then the order in which they must be compared becomes critical. The comarison logic must start with, comparing most significant field and must move down towards least significant fields. If the comparison result at any particular stage is not zero (not equals), then the logic will halt and result should be returned immediately. 
+* **Caution** - take care of **integer overflow!** Consider the following `compareTo` implementation, which, at first look, seems to be perfectly fine.
+
+      class Task implements Comparable<Task> {
+      
+            private int randomId;
+            
+            //rest of the code
+            
+           /*
+            * Sorts the tasks by the natural ordering of integer - randomId.
+            */
+            public int compareTo(Task o) {
+                return this.randomId - o.randomId;
+            }
+      
+       }
+
+Let's say we are comparing 2 tasks, task A(randomId == Integer.MAX_VALUE) and task B (randomId == Integer.MIN_VALUE) - the expeactation from above method would be that `compareTo` method will return a positive integer, if we execute `A.compareTo(B)` ( A > B ) . But the result of the above implementation is a negative value, indicating A < B, due to integer overflow. Appropriate care must be taken while comparing large integers, which are signed.
+
+
