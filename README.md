@@ -17,6 +17,8 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
    3. [Overriding toString](#common_methods_tostring)
    4. [Overriding clone judiciously](#common_methods_clone)
    5. [Consider implementing Comparable](#common_methods_compareTo)
+3. [Classes and Interfaces](#ci)
+   1. [Minimize the accessibility of classes and members](#ci_minimize_access)
 
 <a id='create_destroy' />
 
@@ -648,4 +650,46 @@ If the equality test result of `compareTo` matches that of `equals` method, then
 
 Let's say we are comparing 2 tasks, task A(randomId == Integer.MAX_VALUE) and task B (randomId == Integer.MIN_VALUE) - the expeactation from above method would be that `compareTo` method will return a positive integer, if we execute `A.compareTo(B)` ( A > B ) . But the result of the above implementation is a negative value, indicating A < B, due to integer overflow. Appropriate care must be taken while comparing large integers, which are signed.
 
+<a id='ci' />
 
+## Classes and Interfaces
+
+<a id='ci_minimize_access' />
+
+### Minimize the accessibility of classes and members
+
+* A well designed module, always hides the internal implementation details, cleanly separating it from the API, which the clients will access. The concept of hiding internal details which are not relevant to outside clients is called *encapsulation*.
+* Information hiding is important for many reasons, as it enables creation of - Decoupled systems, Easy to understand and reusable modules, which are inturn easy to develop, test, optimize and use.
+* Java facilitates the *information hiding* by means of *access control* mechanism. The accessibility of an entity depends on the location of its decleration and by the use of *access modifiers* (`private`, `protected` and `public`)  on the declarations.
+* The rule of thumb is to **make each class or member as inaccessible as possible** 
+* For top level (non-nested) classes and interfaces, there are only two possible access levels, *package-private* and *public*. If the class is part of implementation and not public API, it should be *package private* and should not have any access modifier, infront of its declaration. In this way, the class can be modified, removed, replaced without having any subsequent impact on the clients. On the other hand, classes which are *public*, are part of API and there is an obligation to keep it forever, for the sake of compatibility.
+* If the *package-private* is meant to be used only by a single class, then consider making it, `private` nested inner class of the class which is using it.
+* For members, there are 4 possible access modifiers
+
+Access modifiers | Description 
+--- | --- 
+**private** | The member is accessible only from top level class where it is declared
+**package-private (default)** | The member is accessible from any class in the package where it is declared. The access level you get if no access modifier is specified.
+**protected** | The member is accessible from the subclasses of the class where it is declared and from any class in the package where it is declared.
+**public** | The member is accessible anywhere.
+
+* After carefully designing class's public API, you should try to make all the other members private. If some members are required by classes in the same package, then `private` modifier should be removed from the declaration of that member, making it *package-private*. If you find doing this often, then redesign the API structure.
+* To facilitate testing, it is acceptable to change the accessiblity of `private` members to `package-private`, but not beyond that.
+* **Instance fields should never be public** - if an instance field is non-final or final pointing to a mutable object, then by making it public, you loose the ability to limit its value and fail to take an action, if its value gets modified.
+* **Classes with public mutable fields** are not *Thread-safe*.
+* You can have a `public static final` field, if it is an integral part of the abstraction provided by the class. Such field should refer to primitive types or immutable objects.
+* If a `public static final` field refers to mutable objects (such as array with non-zero length), then it is wrong to export it as `public` or assign it a `public` access method. Care must be taken, if such access is given outside the class, for example, the access to such fields can be given using following ways -
+
+      //Providing access to private array
+      private static final Task[] TASK_ARR = { ... };
+      public static final List<Task> TASK_LIST = Collections.unmodifiableList(Arrays.asList(TASK_ARR));
+      
+or
+
+      //Providing access to private array
+      private static final Task[] TASK_ARR = { ... };
+      
+      public static Thing[] getTaskArr() {
+            return TASK_ARR.clone();
+      }
+      
