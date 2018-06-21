@@ -19,6 +19,7 @@ Highlights the key points from the famous Java "Best Practices" book - [Effectiv
    5. [Consider implementing Comparable](#common_methods_compareTo)
 3. [Classes and Interfaces](#ci)
    1. [Minimize the accessibility of classes and members](#ci_minimize_access)
+   2. [In public classes, use accessor methods, NOT public fields!](#ci_no_public_fields)
 
 <a id='create_destroy' />
 
@@ -693,3 +694,12 @@ or
             return TASK_ARR.clone();
       }
       
+
+<a id='ci_no_public_fields' />
+
+### In public classes, use acceossor methods, NOT public fields
+
+* Public classes having public fields will **not** have the benefits of *encapsulation*. We cannot change their internal structure without changing the API, we cannot take any action if the fields are accessed.
+* Unless the class is package-private or private, then declaring the fields `public` is somewhat acceptable. Because, in the event of internal structural change, the change impact is restricted to a package or at the best case, the enclosing class of the private class. Classes without public accessor methods are less verbose, thus making less visual clutter.
+* Also, it is acceptable for a public class to expose **immutable** fields as public, although the issue discussed in the first point still holds good, with this approach.
+* We should **refrain** from providing public assess to **mutable** fields of a class.
